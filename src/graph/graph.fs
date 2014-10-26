@@ -24,6 +24,8 @@ type Format = Raw | Pretty
 module Graph = 
     open System
     open System.Text
+    open System.Threading
+    open System.Threading.Tasks
 
     let private rnd = Random()
 
@@ -90,6 +92,15 @@ module Graph =
 
     let numCliques cliqueSize gSize (g:G) =
         firstLoop 0 cliqueSize gSize 0 g
+
+    module Parallel =
+        let numCliques cliqueSize gSize (g:G) =
+            let results = Array.zeroCreate (gSize - cliqueSize + 1)
+            results
+            |> Array.mapi (fun i _ -> Task.Run(fun () ->
+                    results.[i] <- secondLoop 0 (i+1) cliqueSize i gSize g))
+            |> Task.WaitAll
+            results |> Array.sum
 
                         
                     
