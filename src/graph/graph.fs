@@ -58,3 +58,38 @@ module Graph =
                 ignore (sb.Remove(sb.Length - 1, 1))
                 if i <> n then ignore (sb.Append(Environment.NewLine))
         sb.ToString()
+
+    let rec private continuesClique newVtx prevVtxs clr g =
+        match prevVtxs with
+        | vtx :: vtxs ->
+            let e = getEdge newVtx vtx g
+            if e = clr then continuesClique newVtx vtxs clr g
+            else false
+        | [] -> true
+
+    let rec private innerLoop total startVtx endVtx level (prevVtxs:int list) color gSize g =
+        if startVtx > endVtx then total else
+        let newTotal =
+            match (continuesClique startVtx prevVtxs color g), level with
+            | true, 1 -> total + 1
+            | true, _ -> innerLoop total (startVtx+1) (endVtx+1) (level-1) (startVtx::prevVtxs) color gSize g
+            | _ -> total            
+        innerLoop newTotal (startVtx+1) (endVtx) (level) (prevVtxs) color gSize g
+
+    let rec private secondLoop total startVtx cliqueSize prevVtx gSize g =
+        if startVtx > (gSize - cliqueSize + 1) then total else
+        let color = getEdge startVtx prevVtx g
+        let newTotal =
+            innerLoop total (startVtx+1) (gSize - cliqueSize + 2) (cliqueSize-2) [startVtx;prevVtx] color gSize g
+        secondLoop newTotal (startVtx+1) cliqueSize prevVtx gSize g
+
+    let rec private firstLoop vtx cliqueSize gSize total g =
+        if vtx > (gSize - cliqueSize) then total else
+        let newTotal = secondLoop total (vtx+1) cliqueSize vtx gSize g
+        firstLoop (vtx+1) cliqueSize gSize newTotal g        
+
+    let numCliques cliqueSize gSize (g:G) =
+        firstLoop 0 cliqueSize gSize 0 g
+
+                        
+                    

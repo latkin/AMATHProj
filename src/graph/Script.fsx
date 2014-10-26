@@ -1,8 +1,7 @@
-﻿// Learn more about F# at http://fsharp.net. See the 'F# Tutorial' project
-// for more guidance on F# programming.
+﻿#load "Graph.fs"
 
-#load "Library1.fs"
-open graph
+open AMATHProj.Lib
 
-// Define your library scripting code here
-
+let size = 20
+let g = Graph.init size 0
+g |> Graph.numCliques 5 size
