@@ -7,12 +7,10 @@ module TestHelpers =
         let mutable total = 0
         for i1 = 0 to gSize - 3 do
             for i2 = (i1+1) to gSize - 2 do
-                let e1 = Graph.getEdge i2 i1 g
+                let clr = Graph.getEdge i2 i1 g
                 for i3 = (i2+1) to gSize - 1 do
-                    let e2 = Graph.getEdge i3 i1 g
-                    if e1<>e2 then () else
-                    let e3 = Graph.getEdge i3 i2 g
-                    if e2=e3 then
+                    if clr <> (Graph.getEdge i3 i1 g) then () else
+                    if clr = (Graph.getEdge i3 i2 g) then
                         total <- total + 1
         total
 
@@ -21,18 +19,34 @@ module TestHelpers =
         let mutable total = 0
         for i1 = 0 to gSize - 4 do
             for i2 = (i1+1) to gSize - 3 do
-                let e1 = Graph.getEdge i2 i1 g
+                let clr = Graph.getEdge i2 i1 g
                 for i3 = (i2+1) to gSize - 2 do
-                    let e2 = Graph.getEdge i3 i2 g
-                    if e2<>e1 then () else
-                    let e3 = Graph.getEdge i3 i1 g
-                    if e2<>e3 then () else
+                    if clr <> (Graph.getEdge i3 i2 g) then () else
+                    if clr <> (Graph.getEdge i3 i1 g) then () else
                     for i4 = (i3+1) to gSize - 1 do
-                        let e4 = Graph.getEdge i4 i1 g
-                        if e3<>e4 then () else
-                        let e5 = Graph.getEdge i4 i2 g
-                        if e4<>e5 then () else
-                        let e6 = Graph.getEdge i4 i3 g
-                        if e5=e6 then
+                        if clr <> (Graph.getEdge i4 i1 g) then () else
+                        if clr <> (Graph.getEdge i4 i2 g) then () else
+                        if clr = (Graph.getEdge i4 i3 g) then
                             total <- total + 1
+        total
+
+    // dedicated, straightforward count of size-5 cliques
+    let num5CliquesSimple gSize (g:G) =
+        let mutable total = 0
+        for i1 = 0 to gSize - 5 do
+            for i2 = (i1+1) to gSize - 4 do
+                let clr = Graph.getEdge i2 i1 g
+                for i3 = (i2+1) to gSize - 3 do
+                    if clr <> (Graph.getEdge i3 i2 g) then () else
+                    if clr <> (Graph.getEdge i3 i1 g) then () else
+                    for i4 = (i3+1) to gSize - 2 do
+                        if clr <> (Graph.getEdge i4 i1 g) then () else
+                        if clr <> (Graph.getEdge i4 i2 g) then () else
+                        if clr <> (Graph.getEdge i4 i3 g) then () else
+                        for i5 = (i4+1) to gSize - 1 do
+                            if clr <> (Graph.getEdge i5 i1 g) then () else
+                            if clr <> (Graph.getEdge i5 i2 g) then () else
+                            if clr <> (Graph.getEdge i5 i3 g) then () else
+                            if clr = (Graph.getEdge i5 i4 g) then
+                                total <- total + 1
         total

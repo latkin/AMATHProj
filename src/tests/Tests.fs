@@ -122,3 +122,6 @@ type Tests() =
             let expected4 = TestHelpers.num4CliquesSimple 40 g
             let actual4 = Graph.numCliques 4 40 g
             Assert.Equal(expected4, actual4)
+            let expected5 = TestHelpers.num5CliquesSimple 40 g
+            let actual5 = Graph.numCliques 5 40 g
+            Assert.Equal(expected5, actual5)
