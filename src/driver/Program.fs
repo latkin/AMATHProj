@@ -1,6 +1,6 @@
 ﻿open AMATHProj.Lib
 
-let numVtx = 32
+let numVtx = 43
 let numColors = 2
 let cliqueSize = 5
 

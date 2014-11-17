@@ -23,6 +23,17 @@ type G = int array
 type CR = int array
 
 type Format = Raw | Pretty
+type CliqueFoundAction = Stop of int | Continue of int
+type NewVertexAction = Accept | Skip
+
+type HookFuncs =
+    {
+        OnCliqueFound : (int list -> int list -> int -> int -> CliqueFoundAction) option
+        OnNewVertex : (int -> NewVertexAction) option        
+    }
+    static member Default =
+        {OnCliqueFound = None;
+         OnNewVertex = None}
 
 module Graph =
     open System
@@ -49,6 +60,9 @@ module Graph =
 
     let inline getEdgeIndex i j =
         if i > j then (i*i - i)/2 + j else (j*j - j)/2 + i
+
+    let inline verts index =
+        ()
 
     let inline setEdge i j clr (g:G) =
         if i > j then g.[(i*i - i)/2 + j] <- clr else
@@ -138,48 +152,79 @@ module Graph =
             else (false, prevIdxs)
         | [] -> (true, prevIdxs)
 
-    let rec private innerLoop func total startVtx endVtx level (prevVtxs:int list) (prevIdxs:int list) color g =
-        if startVtx > endVtx then total else
-        let newTotal =
+    let rec private innerLoop hooks total startVtx endVtx level (prevVtxs:int list) (prevIdxs:int list) color g =
+        if startVtx > endVtx then Continue(total) else
+        let result =
             match (continuesClique startVtx prevVtxs prevIdxs color g), level with
             | (true, indexes), 1 ->
-                match func with Some(f) -> f (startVtx :: prevVtxs) indexes color | None -> ()
-                total + 1
+                let newTotal = total + 1
+                match hooks.OnCliqueFound with
+                | Some(f) -> f (startVtx :: prevVtxs) indexes color newTotal
+                | None -> Continue(newTotal)
             | (true, indexes), _ ->
-                innerLoop func total (startVtx+1) (endVtx+1) (level-1) (startVtx::prevVtxs) indexes color g
-            | _ -> total            
-        innerLoop func newTotal (startVtx+1) endVtx level prevVtxs prevIdxs color g
+                innerLoop hooks total (startVtx+1) (endVtx+1) (level-1) (startVtx::prevVtxs) indexes color g
+            | _ -> Continue(total)
 
-    let rec private secondLoop func total startVtx cliqueSize prevVtx gSize g =
-        if startVtx > (gSize - cliqueSize + 1) then total else
+        match result with
+        | Continue(newTotal) ->          
+            innerLoop hooks newTotal (startVtx+1) endVtx level prevVtxs prevIdxs color g
+        | _ -> result
+
+    let rec private secondLoop hooks total startVtx cliqueSize prevVtx gSize g =
+        if startVtx > (gSize - cliqueSize + 1) then Continue(total) else
         let (color, index) = getEdgeAndIndex startVtx prevVtx g
-        let newTotal =
-            innerLoop func total (startVtx+1) (gSize - cliqueSize + 2) (cliqueSize-2) [startVtx;prevVtx] [index] color g
-        secondLoop func newTotal (startVtx+1) cliqueSize prevVtx gSize g
+        let result =
+            innerLoop hooks total (startVtx+1) (gSize - cliqueSize + 2) (cliqueSize-2) [startVtx;prevVtx] [index] color g
 
-    let rec private firstLoop func vtx cliqueSize gSize total g =
-        if vtx > (gSize - cliqueSize) then total else
-        let newTotal = secondLoop func total (vtx+1) cliqueSize vtx gSize g
-        firstLoop func (vtx+1) cliqueSize gSize newTotal g        
+        match result with
+        | Continue(newTotal) ->
+            secondLoop hooks newTotal (startVtx+1) cliqueSize prevVtx gSize g
+        | _ -> result
+
+    let rec private firstLoop hooks vtx cliqueSize gSize total g =
+        if vtx > (gSize - cliqueSize) then Continue(total) else
+        let result = secondLoop hooks total (vtx+1) cliqueSize vtx gSize g
+        match result with
+        | Continue(newTotal) ->
+            firstLoop hooks (vtx+1) cliqueSize gSize newTotal g
+        | _ -> result  
 
     let numCliques cliqueSize (g:G) =
-        match cliqueSize with
-        | s when s < 3 -> failwith "specified clique size is too small"
-        | 3 -> Dedicated.num3Cliques g
-        | 4 -> Dedicated.num4Cliques g
-        | 5 -> Dedicated.num5Cliques g
-        | _ ->
+    //    match cliqueSize with
+    //    | s when s < 3 -> failwith "specified clique size is too small"
+    //    | 3 -> Dedicated.num3Cliques g
+    //    | 4 -> Dedicated.num4Cliques g
+    //    | 5 -> Dedicated.num5Cliques g
+    //    | _ ->
             let gSize = size g
-            firstLoop None 0 cliqueSize gSize 0 g
+            let result = firstLoop HookFuncs.Default 0 cliqueSize gSize 0 g
+            match result with | Continue(n) | Stop(n) -> n
 
     let numCliques_Record cliqueSize (g:G) =
         let gSize = size g
         let cliqueRecord : CR = init gSize 0
-        let onCliqueFound _ idxs _ =
+        let onCliqueFound _ idxs _ total =
             for i in idxs do
                 cliqueRecord.[i] <- cliqueRecord.[i] + 1
-        let numCliques = firstLoop (Some(onCliqueFound)) 0 cliqueSize gSize 0 g
-        (numCliques, cliqueRecord)
+            Continue(total)
+        let hooks = 
+            {OnCliqueFound = Some(onCliqueFound);
+             OnNewVertex = None }
+        let result = firstLoop hooks 0 cliqueSize gSize 0 g
+        match result with
+        | Continue(numCliques) | Stop(numCliques) ->
+            (numCliques, cliqueRecord)
+
+    let numCliques_Cutoff cutoff cliqueSize (g:G) =
+        let gSize = size g
+        let onCliqueFound _ _ _ total =
+            if total > cutoff then Stop(total)
+            else Continue(total)
+        let hooks = 
+            {OnCliqueFound = Some(onCliqueFound);
+             OnNewVertex = None }
+        let result = firstLoop hooks 0 cliqueSize gSize 0 g
+        match result with | Continue(n) | Stop(n) -> n
 
     module Parallel =
         open System.Threading.Tasks
@@ -189,6 +234,7 @@ module Graph =
             let results = Array.zeroCreate (gSize - cliqueSize + 1)
             results
             |> Array.mapi (fun i _ -> Task.Run(fun () ->
-                    results.[i] <- secondLoop None 0 (i+1) cliqueSize i gSize g))
+                    let result = secondLoop HookFuncs.Default 0 (i+1) cliqueSize i gSize g                    
+                    results.[i] <- match result with | Continue(n) | Stop(n) -> n))
             |> Task.WaitAll
             results |> Array.sum

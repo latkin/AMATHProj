@@ -23,7 +23,7 @@ module Algos =
         let mutable i1 = 0
         while i1 < g.Length do
             Graph.flipEdge i1 g
-            let newCliqueCount = Graph.numCliques cliqueSize g
+            let newCliqueCount = Graph.numCliques_Cutoff lowestCliqueCount cliqueSize g
             if newCliqueCount < lowestCliqueCount then
                 lowestCliqueCount <- newCliqueCount
                 i1 <- Int32.MaxValue
@@ -45,7 +45,7 @@ module Algos =
             i2 <- i1 + 1
             while i2 < g.Length && go do
                 Graph.flipEdge i2 g
-                let newCliqueCount = Graph.numCliques cliqueSize g
+                let newCliqueCount = Graph.numCliques_Cutoff lowestCliqueCount cliqueSize g
                 if newCliqueCount < lowestCliqueCount then
                     lowestCliqueCount <- newCliqueCount
                     go <- false
