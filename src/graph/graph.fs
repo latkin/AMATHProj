@@ -47,12 +47,14 @@ module Graph =
         let index = if i > j then (i*i - i)/2 + j else (j*j - j)/2 + i
         (g.[index], index)
 
-    let inline getEdgeIndex i j (g:G) =
+    let inline getEdgeIndex i j =
         if i > j then (i*i - i)/2 + j else (j*j - j)/2 + i
 
     let inline setEdge i j clr (g:G) =
         if i > j then g.[(i*i - i)/2 + j] <- clr else
         g.[(j*j - j)/2 + i] <- clr
+    
+    let inline size (g:G) = (g.Length * 2) |> float |> sqrt |> ceil |> int
 
     let toString f (g:G) =
         let sb = StringBuilder()
@@ -77,7 +79,7 @@ module Graph =
             else (false, prevIdxs)
         | [] -> (true, prevIdxs)
 
-    let rec private innerLoop func total startVtx endVtx level (prevVtxs:int list) (prevIdxs:int list) color gSize g =
+    let rec private innerLoop func total startVtx endVtx level (prevVtxs:int list) (prevIdxs:int list) color g =
         if startVtx > endVtx then total else
         let newTotal =
             match (continuesClique startVtx prevVtxs prevIdxs color g), level with
@@ -85,15 +87,15 @@ module Graph =
                 match func with Some(f) -> f (startVtx :: prevVtxs) indexes color | None -> ()
                 total + 1
             | (true, indexes), _ ->
-                innerLoop func total (startVtx+1) (endVtx+1) (level-1) (startVtx::prevVtxs) indexes color gSize g
+                innerLoop func total (startVtx+1) (endVtx+1) (level-1) (startVtx::prevVtxs) indexes color g
             | _ -> total            
-        innerLoop func newTotal (startVtx+1) endVtx level prevVtxs prevIdxs color gSize g
+        innerLoop func newTotal (startVtx+1) endVtx level prevVtxs prevIdxs color g
 
     let rec private secondLoop func total startVtx cliqueSize prevVtx gSize g =
         if startVtx > (gSize - cliqueSize + 1) then total else
         let (color, index) = getEdgeAndIndex startVtx prevVtx g
         let newTotal =
-            innerLoop func total (startVtx+1) (gSize - cliqueSize + 2) (cliqueSize-2) [startVtx;prevVtx] [index] color gSize g
+            innerLoop func total (startVtx+1) (gSize - cliqueSize + 2) (cliqueSize-2) [startVtx;prevVtx] [index] color g
         secondLoop func newTotal (startVtx+1) cliqueSize prevVtx gSize g
 
     let rec private firstLoop func vtx cliqueSize gSize total g =
@@ -101,10 +103,12 @@ module Graph =
         let newTotal = secondLoop func total (vtx+1) cliqueSize vtx gSize g
         firstLoop func (vtx+1) cliqueSize gSize newTotal g        
 
-    let numCliques cliqueSize gSize (g:G) =
+    let numCliques cliqueSize (g:G) =
+        let gSize = size g
         firstLoop None 0 cliqueSize gSize 0 g
 
-    let numCliques_Record cliqueSize gSize (g:G) =
+    let numCliques_Record cliqueSize (g:G) =
+        let gSize = size g
         let cliqueRecord : CR = init gSize 0
         let onCliqueFound _ idxs _ =
             for i in idxs do
@@ -112,16 +116,20 @@ module Graph =
         let numCliques = firstLoop (Some(onCliqueFound)) 0 cliqueSize gSize 0 g
         (numCliques, cliqueRecord)
 
-    let inline flip i j (g:G) =
-        let index = getEdgeIndex i j g
+    let inline flipEdge index (g:G) =
         let currValue = g.[index]
         if currValue = 0 then g.[index] <- 1
         else g.[index] <- 0
 
+    let inline flip i j (g:G) =
+        let index = getEdgeIndex i j
+        flipEdge index g
+
     module Parallel =
         open System.Threading.Tasks
 
-        let numCliques cliqueSize gSize (g:G) =
+        let numCliques cliqueSize (g:G) =
+            let gSize = size g
             let results = Array.zeroCreate (gSize - cliqueSize + 1)
             results
             |> Array.mapi (fun i _ -> Task.Run(fun () ->

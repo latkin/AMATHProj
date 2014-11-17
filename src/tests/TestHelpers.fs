@@ -3,7 +3,8 @@ open AMATHProj.Lib
 
 module TestHelpers = 
     // dedicated, straightforward count of size-3 cliques
-    let num3CliquesSimple gSize (g:G) =
+    let num3CliquesSimple (g:G) =
+        let gSize = Graph.size g
         let mutable total = 0
         for i1 = 0 to gSize - 3 do
             for i2 = (i1+1) to gSize - 2 do
@@ -15,7 +16,8 @@ module TestHelpers =
         total
 
     // dedicated, straightforward count of size-4 cliques
-    let num4CliquesSimple gSize (g:G) =
+    let num4CliquesSimple (g:G) =
+        let gSize = Graph.size g
         let mutable total = 0
         for i1 = 0 to gSize - 4 do
             for i2 = (i1+1) to gSize - 3 do
@@ -31,7 +33,8 @@ module TestHelpers =
         total
 
     // dedicated, straightforward count of size-5 cliques
-    let num5CliquesSimple gSize (g:G) =
+    let num5CliquesSimple (g:G) =
+        let gSize = Graph.size g
         let mutable total = 0
         for i1 = 0 to gSize - 5 do
             for i2 = (i1+1) to gSize - 4 do
