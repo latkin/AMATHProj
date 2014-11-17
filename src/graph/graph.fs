@@ -17,7 +17,10 @@
 //    then we move over j columns, so final index is (i^2 - i)/2 + j.
 //  If i < j, we just swap the roles of i and j in the above expression.
 
+// graph
 type G = int array
+// clique record
+type CR = int array
 
 type Format = Raw | Pretty
 
@@ -79,7 +82,7 @@ module Graph =
         let newTotal =
             match (continuesClique startVtx prevVtxs prevIdxs color g), level with
             | (true, indexes), 1 ->
-                func (startVtx :: prevVtxs) indexes color
+                match func with Some(f) -> f (startVtx :: prevVtxs) indexes color | None -> ()
                 total + 1
             | (true, indexes), _ ->
                 innerLoop func total (startVtx+1) (endVtx+1) (level-1) (startVtx::prevVtxs) indexes color gSize g
@@ -99,15 +102,21 @@ module Graph =
         firstLoop func (vtx+1) cliqueSize gSize newTotal g        
 
     let numCliques cliqueSize gSize (g:G) =
-        firstLoop (fun _ _ _ -> ()) 0 cliqueSize gSize 0 g
+        firstLoop None 0 cliqueSize gSize 0 g
 
     let numCliques_Record cliqueSize gSize (g:G) =
-        let cliqueRecord = init gSize 0
+        let cliqueRecord : CR = init gSize 0
         let onCliqueFound _ idxs _ =
             for i in idxs do
                 cliqueRecord.[i] <- cliqueRecord.[i] + 1
-        let numCliques = firstLoop onCliqueFound 0 cliqueSize gSize 0 g
+        let numCliques = firstLoop (Some(onCliqueFound)) 0 cliqueSize gSize 0 g
         (numCliques, cliqueRecord)
+
+    let inline flip i j (g:G) =
+        let index = getEdgeIndex i j g
+        let currValue = g.[index]
+        if currValue = 0 then g.[index] <- 1
+        else g.[index] <- 0
 
     module Parallel =
         open System.Threading.Tasks
@@ -116,6 +125,9 @@ module Graph =
             let results = Array.zeroCreate (gSize - cliqueSize + 1)
             results
             |> Array.mapi (fun i _ -> Task.Run(fun () ->
-                    results.[i] <- secondLoop (fun _ _ _-> ()) 0 (i+1) cliqueSize i gSize g))
+                    results.[i] <- secondLoop None 0 (i+1) cliqueSize i gSize g))
             |> Task.WaitAll
             results |> Array.sum
+
+
+
