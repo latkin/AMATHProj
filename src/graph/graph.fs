@@ -24,8 +24,6 @@ type Format = Raw | Pretty
 module Graph = 
     open System
     open System.Text
-    open System.Threading
-    open System.Threading.Tasks
 
     let private rnd = Random()
 
@@ -41,6 +39,13 @@ module Graph =
     let inline getEdge i j (g:G) =
         if i > j then g.[(i*i - i)/2 + j] else
         g.[(j*j - j)/2 + i]
+
+    let inline getEdgeAndIndex i j (g:G) =
+        let index = if i > j then (i*i - i)/2 + j else (j*j - j)/2 + i
+        (g.[index], index)
+
+    let inline getEdgeIndex i j (g:G) =
+        if i > j then (i*i - i)/2 + j else (j*j - j)/2 + i
 
     let inline setEdge i j clr (g:G) =
         if i > j then g.[(i*i - i)/2 + j] <- clr else
@@ -61,46 +66,56 @@ module Graph =
                 if i <> n then ignore (sb.Append(Environment.NewLine))
         sb.ToString()
 
-    let rec private continuesClique newVtx prevVtxs clr g =
+    let rec private continuesClique newVtx prevVtxs prevIdxs clr g =
         match prevVtxs with
         | vtx :: vtxs ->
-            let e = getEdge newVtx vtx g
-            if e = clr then continuesClique newVtx vtxs clr g
-            else false
-        | [] -> true
+            let (e, i) = getEdgeAndIndex newVtx vtx g
+            if e = clr then continuesClique newVtx vtxs (i::prevIdxs) clr g
+            else (false, prevIdxs)
+        | [] -> (true, prevIdxs)
 
-    let rec private innerLoop total startVtx endVtx level (prevVtxs:int list) color gSize g =
+    let rec private innerLoop func total startVtx endVtx level (prevVtxs:int list) (prevIdxs:int list) color gSize g =
         if startVtx > endVtx then total else
         let newTotal =
-            match (continuesClique startVtx prevVtxs color g), level with
-            | true, 1 -> total + 1
-            | true, _ -> innerLoop total (startVtx+1) (endVtx+1) (level-1) (startVtx::prevVtxs) color gSize g
+            match (continuesClique startVtx prevVtxs prevIdxs color g), level with
+            | (true, indexes), 1 ->
+                func (startVtx :: prevVtxs) indexes color
+                total + 1
+            | (true, indexes), _ ->
+                innerLoop func total (startVtx+1) (endVtx+1) (level-1) (startVtx::prevVtxs) indexes color gSize g
             | _ -> total            
-        innerLoop newTotal (startVtx+1) (endVtx) (level) (prevVtxs) color gSize g
+        innerLoop func newTotal (startVtx+1) endVtx level prevVtxs prevIdxs color gSize g
 
-    let rec private secondLoop total startVtx cliqueSize prevVtx gSize g =
+    let rec private secondLoop func total startVtx cliqueSize prevVtx gSize g =
         if startVtx > (gSize - cliqueSize + 1) then total else
-        let color = getEdge startVtx prevVtx g
+        let (color, index) = getEdgeAndIndex startVtx prevVtx g
         let newTotal =
-            innerLoop total (startVtx+1) (gSize - cliqueSize + 2) (cliqueSize-2) [startVtx;prevVtx] color gSize g
-        secondLoop newTotal (startVtx+1) cliqueSize prevVtx gSize g
+            innerLoop func total (startVtx+1) (gSize - cliqueSize + 2) (cliqueSize-2) [startVtx;prevVtx] [index] color gSize g
+        secondLoop func newTotal (startVtx+1) cliqueSize prevVtx gSize g
 
-    let rec private firstLoop vtx cliqueSize gSize total g =
+    let rec private firstLoop func vtx cliqueSize gSize total g =
         if vtx > (gSize - cliqueSize) then total else
-        let newTotal = secondLoop total (vtx+1) cliqueSize vtx gSize g
-        firstLoop (vtx+1) cliqueSize gSize newTotal g        
+        let newTotal = secondLoop func total (vtx+1) cliqueSize vtx gSize g
+        firstLoop func (vtx+1) cliqueSize gSize newTotal g        
 
     let numCliques cliqueSize gSize (g:G) =
-        firstLoop 0 cliqueSize gSize 0 g
+        firstLoop (fun _ _ _ -> ()) 0 cliqueSize gSize 0 g
+
+    let numCliques_Record cliqueSize gSize (g:G) =
+        let cliqueRecord = init gSize 0
+        let onCliqueFound _ idxs _ =
+            for i in idxs do
+                cliqueRecord.[i] <- cliqueRecord.[i] + 1
+        let numCliques = firstLoop onCliqueFound 0 cliqueSize gSize 0 g
+        (numCliques, cliqueRecord)
 
     module Parallel =
+        open System.Threading.Tasks
+
         let numCliques cliqueSize gSize (g:G) =
             let results = Array.zeroCreate (gSize - cliqueSize + 1)
             results
             |> Array.mapi (fun i _ -> Task.Run(fun () ->
-                    results.[i] <- secondLoop 0 (i+1) cliqueSize i gSize g))
+                    results.[i] <- secondLoop (fun _ _ _-> ()) 0 (i+1) cliqueSize i gSize g))
             |> Task.WaitAll
             results |> Array.sum
-
-                        
-                    

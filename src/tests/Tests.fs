@@ -168,3 +168,14 @@ type Tests() =
             let expected5 = TestHelpers.num5CliquesSimple 40 g
             let actual5 = Graph.Parallel.numCliques 5 40 g
             Assert.Equal(expected5, actual5)
+
+    [<Fact>]
+    member __.NumCliquesRecord() =
+        let g = Graph.init 20 0
+        let (num, counts) = Graph.numCliques_Record 5 20 g
+        Assert.Equal(15504, num)
+        counts |> Array.iter (fun c -> Assert.Equal(816, c))
+
+        let (num, counts) = Graph.numCliques_Record 3 20 g
+        Assert.Equal(1140, num)
+        counts |> Array.iter (fun c -> Assert.Equal(18, c))
