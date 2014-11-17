@@ -43,6 +43,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="graph.fs" />
+    <Compile Include="algos.fs" />
     <None Include="Script.fsx" />
   </ItemGroup>
   <PropertyGroup>

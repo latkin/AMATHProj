@@ -6,12 +6,12 @@ let size = 20
 
 for __ = 1 to 10000 do
     let g = Graph.random size 2
-    g |> Graph.numCliques 3 size
+    g |> Graph.numCliques 3
 
 for __ = 1 to 10000 do
     let g = Graph.random size 2
-    g |> TestHelpers.num3CliquesSimple size
+    g |> TestHelpers.num3CliquesSimple
 
 let g = Graph.random 1000 5
-g |> Graph.numCliques 3 1000
-g |> TestHelpers.num3CliquesSimple 1000
+g |> Graph.numCliques 3
+g |> TestHelpers.num3CliquesSimple

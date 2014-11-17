@@ -24,7 +24,7 @@ type CR = int array
 
 type Format = Raw | Pretty
 
-module Graph = 
+module Graph =
     open System
     open System.Text
 
@@ -71,6 +71,65 @@ module Graph =
                 if i <> n then ignore (sb.Append(Environment.NewLine))
         sb.ToString()
 
+    let inline flipEdge index (g:G) =
+        let currValue = g.[index]
+        if currValue = 0 then g.[index] <- 1
+        else g.[index] <- 0
+
+    let inline flip i j (g:G) =
+        let index = getEdgeIndex i j
+        flipEdge index g
+
+    module Dedicated =
+        let num3Cliques (g:G) =
+            let gSize = size g
+            let mutable total = 0
+            for i1 = 0 to gSize - 3 do
+                for i2 = (i1+1) to gSize - 2 do
+                    let clr = getEdge i2 i1 g
+                    for i3 = (i2+1) to gSize - 1 do
+                        if clr <> (getEdge i3 i1 g) then () else
+                        if clr = (getEdge i3 i2 g) then
+                            total <- total + 1
+            total
+
+        let num4Cliques (g:G) =
+            let gSize = size g
+            let mutable total = 0
+            for i1 = 0 to gSize - 4 do
+                for i2 = (i1+1) to gSize - 3 do
+                    let clr = getEdge i2 i1 g
+                    for i3 = (i2+1) to gSize - 2 do
+                        if clr <> (getEdge i3 i2 g) then () else
+                        if clr <> (getEdge i3 i1 g) then () else
+                        for i4 = (i3+1) to gSize - 1 do
+                            if clr <> (getEdge i4 i1 g) then () else
+                            if clr <> (getEdge i4 i2 g) then () else
+                            if clr = (getEdge i4 i3 g) then
+                                total <- total + 1
+            total
+
+        let num5Cliques (g:G) =
+            let gSize = size g
+            let mutable total = 0
+            for i1 = 0 to gSize - 5 do
+                for i2 = (i1+1) to gSize - 4 do
+                    let clr = getEdge i2 i1 g
+                    for i3 = (i2+1) to gSize - 3 do
+                        if clr <> (getEdge i3 i2 g) then () else
+                        if clr <> (getEdge i3 i1 g) then () else
+                        for i4 = (i3+1) to gSize - 2 do
+                            if clr <> (getEdge i4 i1 g) then () else
+                            if clr <> (getEdge i4 i2 g) then () else
+                            if clr <> (getEdge i4 i3 g) then () else
+                            for i5 = (i4+1) to gSize - 1 do
+                                if clr <> (getEdge i5 i1 g) then () else
+                                if clr <> (getEdge i5 i2 g) then () else
+                                if clr <> (getEdge i5 i3 g) then () else
+                                if clr = (getEdge i5 i4 g) then
+                                    total <- total + 1
+            total
+
     let rec private continuesClique newVtx prevVtxs prevIdxs clr g =
         match prevVtxs with
         | vtx :: vtxs ->
@@ -104,8 +163,14 @@ module Graph =
         firstLoop func (vtx+1) cliqueSize gSize newTotal g        
 
     let numCliques cliqueSize (g:G) =
-        let gSize = size g
-        firstLoop None 0 cliqueSize gSize 0 g
+        match cliqueSize with
+        | s when s < 3 -> failwith "specified clique size is too small"
+        | 3 -> Dedicated.num3Cliques g
+        | 4 -> Dedicated.num4Cliques g
+        | 5 -> Dedicated.num5Cliques g
+        | _ ->
+            let gSize = size g
+            firstLoop None 0 cliqueSize gSize 0 g
 
     let numCliques_Record cliqueSize (g:G) =
         let gSize = size g
@@ -115,15 +180,6 @@ module Graph =
                 cliqueRecord.[i] <- cliqueRecord.[i] + 1
         let numCliques = firstLoop (Some(onCliqueFound)) 0 cliqueSize gSize 0 g
         (numCliques, cliqueRecord)
-
-    let inline flipEdge index (g:G) =
-        let currValue = g.[index]
-        if currValue = 0 then g.[index] <- 1
-        else g.[index] <- 0
-
-    let inline flip i j (g:G) =
-        let index = getEdgeIndex i j
-        flipEdge index g
 
     module Parallel =
         open System.Threading.Tasks
@@ -136,6 +192,3 @@ module Graph =
                     results.[i] <- secondLoop None 0 (i+1) cliqueSize i gSize g))
             |> Task.WaitAll
             results |> Array.sum
-
-
-
