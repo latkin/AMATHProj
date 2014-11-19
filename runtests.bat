@@ -9,4 +9,4 @@ echo Usage: runtests.bat ^<debug^|release^>
 exit /b 1
 
 :FLAVOR_OK
-.\src\packages\xunit.runners.1.9.2\tools\xunit.console.clr4.exe .\src\tests\bin\Debug\tests.dll
+.\src\packages\xunit.runners.1.9.2\tools\xunit.console.clr4.exe .\src\tests\bin\%FLAVOR%\tests.dll

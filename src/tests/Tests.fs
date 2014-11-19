@@ -94,48 +94,55 @@ type Tests() =
         let s = g |> Graph.toString Raw
         "1234567890" = s |> Assert.True
 
-    [<Fact>]
-    member __.NumCliques() =
+    member __.TestCliqueCountFunc(f) =
         let g = Graph.init 3 0
-        let num = Graph.numCliques 3 g
+        let num = f 3 g
         Assert.Equal(1, num)
 
         let g = Graph.init 4 0
-        let num = Graph.numCliques 3 g
+        let num = f 3 g
         Assert.Equal(4, num)
 
         let g = Graph.init 10 1
-        let num = Graph.numCliques 4 g
+        let num = f 4 g
         Assert.Equal(210, num)
 
         g |> Graph.setEdge 0 1 0
-        let num = Graph.numCliques 4 g
+        let num = f 4 g
         Assert.Equal(182, num)
 
         g |> Graph.setEdge 0 2 0
         g |> Graph.setEdge 1 2 0
-        let num = Graph.numCliques 3 g
+        let num = f 3 g
         Assert.Equal(99, num)
 
         let g = Graph.init 43 0
-        let num = Graph.numCliques 5 g
+        let num = f 5 g
         Assert.Equal(962598, num)
 
         let g = Graph.init 30 0
-        let num = Graph.numCliques 8 g
+        let num = f 8 g
         Assert.Equal(5852925, num)
 
         for __ = 1 to 10 do
             let g = Graph.random 40 3
             let expected3 = TestHelpers.num3CliquesSimple g
-            let actual3 = Graph.numCliques 3 g
+            let actual3 = f 3 g
             Assert.Equal(expected3, actual3)
             let expected4 = TestHelpers.num4CliquesSimple g
-            let actual4 = Graph.numCliques 4 g
+            let actual4 = f 4 g
             Assert.Equal(expected4, actual4)
             let expected5 = TestHelpers.num5CliquesSimple g
-            let actual5 = Graph.numCliques 5 g
+            let actual5 = f 5 g
             Assert.Equal(expected5, actual5)
+
+    [<Fact>]
+    member this.TestNumCliques() =
+        this.TestCliqueCountFunc(Graph.numCliques)
+
+    [<Fact>]
+    member this.TestNumCliquesFunctionalFor() =
+        this.TestCliqueCountFunc(Graph.numCliquesFunctionalFor)
 
     [<Fact>]
     member __.NumCliquesParallel() =
