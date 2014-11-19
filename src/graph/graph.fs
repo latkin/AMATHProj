@@ -172,37 +172,36 @@ module Graph =
             let gSize = size g
             firstLoop None 0 cliqueSize gSize 0 g
 
+    let numCliquesNoDedicated cliqueSize (g:G) = 
+        let gSize = size g
+        firstLoop None 0 cliqueSize gSize 0 g
+
     let numCliquesFunctionalFor cliqueSize (g:G) =
         let gSize = size g
         let mutable total = 0
         let mutable color = -1
-        let mutable edgeIndexes = []
 
-        let getNextVtxRange lvl prevVtxs =
-            match prevVtxs with
-            | v :: vs -> v+1, (gSize - cliqueSize + lvl)
-            | [] -> 0, (gSize - cliqueSize)
+        let getNextVtxRange lvl prevVtx =
+            if lvl = 0 then 0, (gSize - cliqueSize) else
+            (prevVtx+1), (gSize - cliqueSize + lvl)
 
-        let levelBody (lvl:int) (vtxs:int list) =
+        let loopBody (lvl:int) (vtxs:int list) =
             match lvl with
             | 0 -> Descend
             | 1 ->
                 let [v1;v2] = vtxs
-                let c,edgeIndex = getEdgeAndIndex v1 v2 g
-                color <- c
-                edgeIndexes <- [edgeIndex]
+                color <- getEdge v1 v2 g
                 Descend
-            | n ->
+            | _ ->
                 let newVtx::prevVtxs = vtxs
-                match continuesClique newVtx prevVtxs edgeIndexes color g with
-                | true, indexes ->
+                match continuesClique newVtx prevVtxs [] color g with
+                | true, _ ->
                     if lvl = (cliqueSize - 1) then
                         total <- total + 1
-                    edgeIndexes <- indexes
                     Descend
                 | _ -> Continue
 
-        ForLoop.nested cliqueSize getNextVtxRange levelBody
+        ForLoop.nested cliqueSize getNextVtxRange loopBody
         total
 
     let numCliques_Record cliqueSize (g:G) =
