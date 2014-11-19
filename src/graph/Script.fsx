@@ -6,7 +6,8 @@ open AMATHProj.Lib
 open AMATHProj.Tests
 open AMATHProj.Lib
 
-let g = Graph.init 43 0
+let g = Graph.random 43 2
+g |> Graph.numCliques_Record 5
 g |> Graph.numCliquesFunctionalFor 5
 g |> Graph.numCliques 5
 

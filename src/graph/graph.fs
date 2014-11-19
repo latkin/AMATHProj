@@ -24,6 +24,17 @@ type CR = int array
 
 type Format = Raw | Pretty
 
+module Perturb =
+    let recordClique edgeIndexes (cliqueRecord : CR) =
+        let rec loop idxs =
+            match idxs with
+            | h :: t ->
+                cliqueRecord.[h] <- cliqueRecord.[h] + 1
+                loop t
+            | [] -> ()
+        loop edgeIndexes
+            
+
 module Graph =
     open System
     open System.Text
@@ -49,6 +60,21 @@ module Graph =
 
     let inline getEdgeIndex i j =
         if i > j then (i*i - i)/2 + j else (j*j - j)/2 + i
+
+    let getEdgesIdxsForVtxs vtxs = 
+        let rec innerLoop currVtx otherVtxs result =
+            match otherVtxs with
+            | [] -> result
+            | nextVtx :: tailVtx ->
+                let e = getEdgeIndex currVtx nextVtx
+                innerLoop currVtx tailVtx (e::result)
+        let rec outerLoop remainingVtxs result =
+            match remainingVtxs with
+            | h :: t ->
+                let newResult = innerLoop h t result
+                outerLoop t newResult
+            | _ -> result
+        outerLoop vtxs []
 
     let inline setEdge i j clr (g:G) =
         if i > j then g.[(i*i - i)/2 + j] <- clr else
@@ -80,31 +106,31 @@ module Graph =
         let index = getEdgeIndex i j
         flipEdge index g
 
-    let rec private continuesClique newVtx prevVtxs prevIdxs clr g =
+    let rec private continuesClique newVtx prevVtxs clr g =
         match prevVtxs with
         | vtx :: vtxs ->
-            let (e, i) = getEdgeAndIndex newVtx vtx g
-            if e = clr then continuesClique newVtx vtxs (i::prevIdxs) clr g
-            else (false, prevIdxs)
-        | [] -> (true, prevIdxs)
+            let e = getEdge newVtx vtx g
+            if e = clr then continuesClique newVtx vtxs clr g
+            else false
+        | [] -> true
 
-    let rec private innerLoop func total startVtx endVtx level (prevVtxs:int list) (prevIdxs:int list) color g =
+    let rec private innerLoop func total startVtx endVtx level (prevVtxs:int list) color g =
         if startVtx > endVtx then total else
         let newTotal =
-            match (continuesClique startVtx prevVtxs prevIdxs color g), level with
-            | (true, indexes), 1 ->
-                match func with Some(f) -> f (startVtx :: prevVtxs) indexes color | None -> ()
+            match (continuesClique startVtx prevVtxs color g), level with
+            | true, 1 ->
+                match func with Some(f) -> f (startVtx :: prevVtxs) color | None -> ()
                 total + 1
-            | (true, indexes), _ ->
-                innerLoop func total (startVtx+1) (endVtx+1) (level-1) (startVtx::prevVtxs) indexes color g
+            | true, _ ->
+                innerLoop func total (startVtx+1) (endVtx+1) (level-1) (startVtx::prevVtxs) color g
             | _ -> total            
-        innerLoop func newTotal (startVtx+1) endVtx level prevVtxs prevIdxs color g
+        innerLoop func newTotal (startVtx+1) endVtx level prevVtxs color g
 
     let rec private secondLoop func total startVtx cliqueSize prevVtx gSize g =
         if startVtx > (gSize - cliqueSize + 1) then total else
         let (color, index) = getEdgeAndIndex startVtx prevVtx g
         let newTotal =
-            innerLoop func total (startVtx+1) (gSize - cliqueSize + 2) (cliqueSize-2) [startVtx;prevVtx] [index] color g
+            innerLoop func total (startVtx+1) (gSize - cliqueSize + 2) (cliqueSize-2) [startVtx;prevVtx] color g
         secondLoop func newTotal (startVtx+1) cliqueSize prevVtx gSize g
 
     let rec private firstLoop func vtx cliqueSize gSize total g =
@@ -134,8 +160,8 @@ module Graph =
                 Descend
             | _ ->
                 let newVtx::prevVtxs = vtxs
-                match continuesClique newVtx prevVtxs [] color g with
-                | true, _ ->
+                match continuesClique newVtx prevVtxs color g with
+                | true ->
                     if lvl = (cliqueSize - 1) then
                         total <- total + 1
                     Descend
@@ -146,12 +172,34 @@ module Graph =
 
     let numCliques_Record cliqueSize (g:G) =
         let gSize = size g
+        let mutable total = 0
+        let mutable color = -1
         let cliqueRecord : CR = init gSize 0
-        let onCliqueFound _ idxs _ =
-            for i in idxs do
-                cliqueRecord.[i] <- cliqueRecord.[i] + 1
-        let numCliques = firstLoop (Some(onCliqueFound)) 0 cliqueSize gSize 0 g
-        (numCliques, cliqueRecord)
+
+        let getNextVtxRange lvl prevVtx =
+            if lvl = 0 then 0, (gSize - cliqueSize) else
+            (prevVtx+1), (gSize - cliqueSize + lvl)
+
+        let loopBody (lvl:int) (vtxs:int list) =
+            match lvl with
+            | 0 -> Descend
+            | 1 ->
+                let [v1;v2] = vtxs
+                color <- getEdge v1 v2 g
+                Descend
+            | _ ->
+                let newVtx::prevVtxs = vtxs
+                match continuesClique newVtx prevVtxs color g with
+                | true ->
+                    if lvl = (cliqueSize - 1) then
+                        total <- total + 1
+                        let edgeIndexes = getEdgesIdxsForVtxs (newVtx::prevVtxs)
+                        Perturb.recordClique edgeIndexes cliqueRecord
+                    Descend
+                | _ -> Continue
+
+        ForLoop.nested cliqueSize getNextVtxRange loopBody
+        (total, cliqueRecord)
 
     module Parallel =
         open System.Threading.Tasks
