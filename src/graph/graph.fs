@@ -163,14 +163,35 @@ module Graph =
         firstLoop func (vtx+1) cliqueSize gSize newTotal g        
 
     let numCliques cliqueSize (g:G) =
-        match cliqueSize with
-        | s when s < 3 -> failwith "specified clique size is too small"
-        | 3 -> Dedicated.num3Cliques g
-        | 4 -> Dedicated.num4Cliques g
-        | 5 -> Dedicated.num5Cliques g
-        | _ ->
-            let gSize = size g
-            firstLoop None 0 cliqueSize gSize 0 g
+        let gSize = size g
+        let mutable total = 0
+        let mutable color = -1
+
+        let getNextVtxRange lvl prevVtxs =
+            match prevVtxs with
+            | v :: vs -> v+1, (gSize - cliqueSize + lvl)
+            | [] -> 0, (gSize - cliqueSize)
+
+        let levelBody (lvl:int) (vtxs:int list) (data:(int list)) =
+            match lvl with
+            | 0 -> Proceed(data)
+            | 1 ->
+                let [v1;v2] = vtxs
+                let c,edgeIndex = getEdgeAndIndex v1 v2 g
+                color <- c
+                Proceed([edgeIndex])
+            | n ->
+                let newVtx::prevVtxs = vtxs
+          //      printfn "Looking at %A" vtxs
+                match continuesClique newVtx prevVtxs data color g with
+                | true, indexes ->
+                    if lvl = (cliqueSize - 1) then
+                        total <- total + 1
+                    Proceed(indexes)
+                | _ -> Continue
+
+        ForLoop.nested cliqueSize getNextVtxRange levelBody ([])
+        total
 
     let numCliques_Record cliqueSize (g:G) =
         let gSize = size g
