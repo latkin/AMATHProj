@@ -176,30 +176,33 @@ module Graph =
         let gSize = size g
         let mutable total = 0
         let mutable color = -1
+        let mutable edgeIndexes = []
 
         let getNextVtxRange lvl prevVtxs =
             match prevVtxs with
             | v :: vs -> v+1, (gSize - cliqueSize + lvl)
             | [] -> 0, (gSize - cliqueSize)
 
-        let levelBody (lvl:int) (vtxs:int list) (data:(int list)) =
+        let levelBody (lvl:int) (vtxs:int list) =
             match lvl with
-            | 0 -> Proceed(data)
+            | 0 -> Descend
             | 1 ->
                 let [v1;v2] = vtxs
                 let c,edgeIndex = getEdgeAndIndex v1 v2 g
                 color <- c
-                Proceed([edgeIndex])
+                edgeIndexes <- [edgeIndex]
+                Descend
             | n ->
                 let newVtx::prevVtxs = vtxs
-                match continuesClique newVtx prevVtxs data color g with
+                match continuesClique newVtx prevVtxs edgeIndexes color g with
                 | true, indexes ->
                     if lvl = (cliqueSize - 1) then
                         total <- total + 1
-                    Proceed(indexes)
+                    edgeIndexes <- indexes
+                    Descend
                 | _ -> Continue
 
-        ForLoop.nested cliqueSize getNextVtxRange levelBody ([])
+        ForLoop.nested cliqueSize getNextVtxRange levelBody
         total
 
     let numCliques_Record cliqueSize (g:G) =
