@@ -162,7 +162,17 @@ module Graph =
         let newTotal = secondLoop func total (vtx+1) cliqueSize vtx gSize g
         firstLoop func (vtx+1) cliqueSize gSize newTotal g        
 
-    let numCliques cliqueSize (g:G) =
+    let numCliques cliqueSize (g:G) = 
+        match cliqueSize with
+        | s when s < 3 -> failwith "specified clique size is too small"
+        | 3 -> Dedicated.num3Cliques g
+        | 4 -> Dedicated.num4Cliques g
+        | 5 -> Dedicated.num5Cliques g
+        | _ ->
+            let gSize = size g
+            firstLoop None 0 cliqueSize gSize 0 g
+
+    let numCliquesFunctionalFor cliqueSize (g:G) =
         let gSize = size g
         let mutable total = 0
         let mutable color = -1
@@ -182,7 +192,6 @@ module Graph =
                 Proceed([edgeIndex])
             | n ->
                 let newVtx::prevVtxs = vtxs
-          //      printfn "Looking at %A" vtxs
                 match continuesClique newVtx prevVtxs data color g with
                 | true, indexes ->
                     if lvl = (cliqueSize - 1) then
