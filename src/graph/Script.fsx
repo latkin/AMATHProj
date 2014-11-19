@@ -6,10 +6,23 @@ open AMATHProj.Lib
 open AMATHProj.Tests
 open AMATHProj.Lib
 
-let g = Graph.random 5 1
+let g = Graph.random 60 1
+let n,cr = g |> Graph.numCliques_Record 5
+
+g |> Graph.flipEdge 1
+
+
+g |> Graph.numCliques 5
+
+let diff = g |> Graph.diffCliquesFull 5 1 cr
+n + diff
+
 let n,cr = g |> Graph.numCliques_Record 3
 g |> Graph.flipEdge 0
-g|> Graph.cliqueCountForEdge 3 2
+Graph.diffCliquesFull 3 0 cr g
+
+Graph.numCliques 3 g
+[0..20] |> List.map (fun i -> g|> Graph.cliqueCountForEdge 3 i)
 
 
 

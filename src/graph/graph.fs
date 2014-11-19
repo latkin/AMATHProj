@@ -34,6 +34,15 @@ module Perturb =
                 loop t
             | [] -> ()
         loop edgeIndexes
+
+    let subtractClique edgeIndexes (cliqueRecord : CR) =
+        let rec loop idxs =
+            match idxs with
+            | h :: t ->
+                cliqueRecord.[h] <- cliqueRecord.[h] - 1
+                loop t
+            | [] -> ()
+        loop edgeIndexes
             
 
 module Graph =
@@ -247,9 +256,78 @@ module Graph =
         ForLoop.nested (cliqueSize-2) getNextVtxRange loopBody
         total
 
+    let cliqueCountForEdge_Subtract cliqueSize i (cliqueRecord:CR) (g:G) =
+        let gSize = size g
+        let mutable total = 0
+        let currentColor = g.[i]
+        let loVert,hiVert = getVtxsForEdgeIndex i gSize
+
+        let getNextVtxRange lvl prevVtx =
+            if lvl = 0 then 0, (gSize - cliqueSize + 2) else
+            (prevVtx+1), (gSize - cliqueSize + 2 + lvl)
+
+        let loopBody (lvl:int) (vtxs:int list) =
+            let check v1 prevVtxs =
+                if loVert = v1 || hiVert = v1 then Continue else
+                let e1 = getEdge loVert v1 g
+                if e1 <> currentColor then Continue else
+                let e2 = getEdge hiVert v1 g
+                if e2 <> currentColor then Continue else
+                match continuesClique v1 prevVtxs currentColor g with
+                | true ->
+                    if lvl = (cliqueSize-3) then
+                        total <- total + 1
+                        Perturb.subtractClique (v1::prevVtxs) cliqueRecord
+                    Descend
+                | _ -> Continue
+
+            let v1::prevVtxs = vtxs
+            check v1 prevVtxs
+
+        ForLoop.nested (cliqueSize-2) getNextVtxRange loopBody
+        total
+
+    let cliqueCountForEdge_Record cliqueSize i (cliqueRecord:CR) (g:G) =
+        let gSize = size g
+        let mutable total = 0
+        let currentColor = g.[i]
+        let loVert,hiVert = getVtxsForEdgeIndex i gSize
+
+        let getNextVtxRange lvl prevVtx =
+            if lvl = 0 then 0, (gSize - cliqueSize + 2) else
+            (prevVtx+1), (gSize - cliqueSize + 2 + lvl)
+
+        let loopBody (lvl:int) (vtxs:int list) =
+            let check v1 prevVtxs =
+                if loVert = v1 || hiVert = v1 then Continue else
+                let e1 = getEdge loVert v1 g
+                if e1 <> currentColor then Continue else
+                let e2 = getEdge hiVert v1 g
+                if e2 <> currentColor then Continue else
+                match continuesClique v1 prevVtxs currentColor g with
+                | true ->
+                    if lvl = (cliqueSize-3) then
+                        total <- total + 1
+                        Perturb.recordClique (v1::prevVtxs) cliqueRecord
+                    Descend
+                | _ -> Continue
+
+            let v1::prevVtxs = vtxs
+            check v1 prevVtxs
+
+        ForLoop.nested (cliqueSize-2) getNextVtxRange loopBody
+        total
+
     let diffCliquesQuick cliqueSize i (cliqueRecord : CR) (g:G) =
         let prevCliqueCount = cliqueRecord.[i]
         let newCliqueCount = cliqueCountForEdge cliqueSize i g
+        newCliqueCount - prevCliqueCount
+
+    let diffCliquesFull cliqueSize i (cliqueRecord : CR) (g:G) =
+        flipEdge i g
+        let prevCliqueCount = cliqueCountForEdge_Subtract cliqueSize i cliqueRecord g
+        flipEdge i g
+        let newCliqueCount = cliqueCountForEdge_Record cliqueSize i cliqueRecord g
         newCliqueCount - prevCliqueCount
 
     module Parallel =
