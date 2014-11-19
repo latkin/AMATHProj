@@ -1,4 +1,5 @@
 ﻿namespace AMATHProj.Lib
+open System.Collections.Generic
 
 // How graphs are represented here
 //
@@ -40,6 +41,7 @@ module Graph =
     open System.Text
 
     let private rnd = Random()
+    let private vertInfo = Dictionary<int, (int*int) array>()
 
     let init nVtx clr : G =
         Array.create ((nVtx * (nVtx - 1)) / 2) clr
@@ -200,6 +202,55 @@ module Graph =
 
         ForLoop.nested cliqueSize getNextVtxRange loopBody
         (total, cliqueRecord)
+
+    let populateVertInfo nVtx =
+        let result : (int*int) array = Array.zeroCreate ((nVtx * (nVtx - 1)) / 2)
+        for i1 = 0 to (nVtx - 2) do
+            for i2 = (i1 + 1) to (nVtx - 1) do
+                result.[getEdgeIndex i1 i2] <- (i1,i2)
+        vertInfo.Add(nVtx, result)
+        result
+
+    let getVtxsForEdgeIndex i nVtx =
+        let mutable res = null
+        if not (vertInfo.TryGetValue(nVtx, &res)) then
+            res <- populateVertInfo nVtx
+        res.[i]
+
+    let cliqueCountForEdge cliqueSize i (g:G) =
+        let gSize = size g
+        let mutable total = 0
+        let currentColor = g.[i]
+        let loVert,hiVert = getVtxsForEdgeIndex i gSize
+
+        let getNextVtxRange lvl prevVtx =
+            if lvl = 0 then 0, (gSize - cliqueSize + 2) else
+            (prevVtx+1), (gSize - cliqueSize + 2 + lvl)
+
+        let loopBody (lvl:int) (vtxs:int list) =
+            let check v1 prevVtxs =
+                if loVert = v1 || hiVert = v1 then Continue else
+                let e1 = getEdge loVert v1 g
+                if e1 <> currentColor then Continue else
+                let e2 = getEdge hiVert v1 g
+                if e2 <> currentColor then Continue else
+                match continuesClique v1 prevVtxs currentColor g with
+                | true ->
+                    if lvl = (cliqueSize-3) then
+                        total <- total + 1
+                    Descend
+                | _ -> Continue
+
+            let v1::prevVtxs = vtxs
+            check v1 prevVtxs
+
+        ForLoop.nested (cliqueSize-2) getNextVtxRange loopBody
+        total
+
+    let diffCliquesQuick cliqueSize i (cliqueRecord : CR) (g:G) =
+        let prevCliqueCount = cliqueRecord.[i]
+        let newCliqueCount = cliqueCountForEdge cliqueSize i g
+        newCliqueCount - prevCliqueCount
 
     module Parallel =
         open System.Threading.Tasks
