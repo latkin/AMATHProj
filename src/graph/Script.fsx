@@ -8,6 +8,7 @@ open AMATHProj.Lib
 
 let g = Graph.init 43 0
 g |> Graph.numCliquesFunctionalFor 5
+g |> Graph.numCliques 5
 
 g |> TestHelpers.num5CliquesSimple
 
