@@ -70,26 +70,73 @@ module Algos =
                 i1 <- i1 + 1
 
         lowestCliqueCount
+
+    let makeFirstHelpful3Flip cliqueSize cliqueCount (cliqueRecord:CR) (g:G) =
+    //    printf "Checking 3" 
+        let mutable lowestCliqueCount = cliqueCount
+        let mutable i1 = 0
+        let mutable i2 = 0
+        let mutable i3 = 0
+
+        let mutable go = true
+
+        while i1 < g.Length - 2 && go do
+     //       printf "."
+            Graph.flipEdge i1 g
+            let lvl1CliqueRecord = Array.copy cliqueRecord
+            let lvl1DeltaCliques = Graph.diffCliquesFull cliqueSize i1 lvl1CliqueRecord g
+            i2 <- i1 + 1
+
+            while i2 < g.Length - 1 && go do
+                Graph.flipEdge i2 g
+                let lvl2CliqueRecord = Array.copy lvl1CliqueRecord
+                let lvl2DeltaCliques = Graph.diffCliquesFull cliqueSize i2 lvl2CliqueRecord g
+                i3 <- i2 + 1
+                while i3 < g.Length && go do
+
+                    if cliqueCount + lvl1DeltaCliques + lvl2DeltaCliques - lvl2CliqueRecord.[i3] >= lowestCliqueCount then i3 <- i3 + 1 else
+                    Graph.flipEdge i3 g
+                    let lvl3DeltaCliques = Graph.diffCliquesQuick cliqueSize i3 lvl2CliqueRecord g
+                    let newCliqueCount = cliqueCount + lvl1DeltaCliques + lvl2DeltaCliques + lvl3DeltaCliques
+                    if newCliqueCount < lowestCliqueCount then
+                        Graph.diffCliquesFull cliqueSize i3 lvl2CliqueRecord g |> ignore
+                        Array.Copy(lvl2CliqueRecord, cliqueRecord, lvl2CliqueRecord.Length)
+                        lowestCliqueCount <- newCliqueCount
+                        go <- false
+                    else
+                        Graph.flipEdge i3 g
+                        i3 <- i3 + 1
+                if go then
+                    Graph.flipEdge i2 g
+                    i2 <- i2 + 1
+            if go then
+                Graph.flipEdge i1 g
+                i1 <- i1 + 1
+    //    printfn ""
+        lowestCliqueCount
     
-    let rec private continuousImpl level cliqueSize cliqueCount (cliqueRecord:CR) (g:G) =
+    let rec private continuousImpl maxLevel level cliqueSize cliqueCount (cliqueRecord:CR) (g:G) =
+        if level > maxLevel then cliqueCount else
         let newCliqueCount = 
             match level with
             | 1 -> makeFirstHelpful1Flip cliqueSize cliqueCount cliqueRecord g
             | 2 -> makeFirstHelpful2Flip cliqueSize cliqueCount cliqueRecord g
+            | 3 -> makeFirstHelpful3Flip cliqueSize cliqueCount cliqueRecord g
             | _ -> cliqueCount
 
         if newCliqueCount < cliqueCount then
-            printfn "New best (lvl %d): %d" level newCliqueCount
+            let spacer = String.replicate (level * 6) " "
+            printfn "New best (lvl %d):%s %d" level spacer newCliqueCount
             if newCliqueCount = 0 then
                 printfn "%s" (Graph.toString Raw g)
                 0
             else
-                continuousImpl 1 cliqueSize newCliqueCount  cliqueRecord g
+                continuousImpl maxLevel 1 cliqueSize newCliqueCount  cliqueRecord g
         else
-            if level = 3 then cliqueCount else
-            printfn "Bumping level"
-            continuousImpl (level+1) cliqueSize cliqueCount cliqueRecord g
+            if level = maxLevel then cliqueCount else
+      //      printfn "Bumping level"
+            continuousImpl maxLevel (level+1) cliqueSize cliqueCount cliqueRecord g
 
-    let continuousScan cliqueSize (g:G) =
+    let continuousScan maxScan cliqueSize (g:G) =
         let cliqueCount,cliqueRecord = Graph.numCliques_Record cliqueSize g
-        continuousImpl 1 cliqueSize cliqueCount cliqueRecord g
+        continuousImpl maxScan 1 cliqueSize cliqueCount cliqueRecord g
