@@ -226,7 +226,7 @@ module Graph =
             res <- populateVertInfo nVtx
         res.[i]
 
-    let cliqueCountForEdge cliqueSize i (g:G) =
+    let cliqueCountForEdge cliqueSize i cutoff (g:G) =
         let gSize = size g
         let mutable total = 0
         let currentColor = g.[i]
@@ -247,7 +247,9 @@ module Graph =
                 | true ->
                     if lvl = (cliqueSize-3) then
                         total <- total + 1
-                    Descend
+                        if total > cutoff then Return
+                        else Descend
+                    else Descend
                 | _ -> Continue
 
             let v1::prevVtxs = vtxs
@@ -277,7 +279,8 @@ module Graph =
                 | true ->
                     if lvl = (cliqueSize-3) then
                         total <- total + 1
-                        Perturb.subtractClique (v1::prevVtxs) cliqueRecord
+                        let edgeIndexes = getEdgesIdxsForVtxs (loVert::hiVert::v1::prevVtxs)
+                        Perturb.subtractClique edgeIndexes cliqueRecord
                     Descend
                 | _ -> Continue
 
@@ -308,7 +311,8 @@ module Graph =
                 | true ->
                     if lvl = (cliqueSize-3) then
                         total <- total + 1
-                        Perturb.recordClique (v1::prevVtxs) cliqueRecord
+                        let edgeIndexes = getEdgesIdxsForVtxs (loVert::hiVert::v1::prevVtxs)
+                        Perturb.recordClique edgeIndexes cliqueRecord
                     Descend
                 | _ -> Continue
 
@@ -320,7 +324,7 @@ module Graph =
 
     let diffCliquesQuick cliqueSize i (cliqueRecord : CR) (g:G) =
         let prevCliqueCount = cliqueRecord.[i]
-        let newCliqueCount = cliqueCountForEdge cliqueSize i g
+        let newCliqueCount = cliqueCountForEdge cliqueSize i prevCliqueCount g
         newCliqueCount - prevCliqueCount
 
     let diffCliquesFull cliqueSize i (cliqueRecord : CR) (g:G) =

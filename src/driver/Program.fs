@@ -1,6 +1,7 @@
 ﻿open AMATHProj.Lib
 
-let g = Graph.random 5 1
-let n,cr = g |> Graph.numCliques_Record 3
-g |> Graph.flipEdge 0
-g |> Graph.cliqueCountForEdge 3 2
+let g = Graph.random 35 2
+
+let reducedCount = Algos.continuousScan 5 g
+printfn "Calculated: %d" reducedCount
+g |> Graph.numCliques 5 |> (printfn "Check: %d")
